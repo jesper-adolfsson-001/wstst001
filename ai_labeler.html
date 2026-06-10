@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Image Labeler</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f6f8;
+      --panel: #ffffff;
+      --ink: #162033;
+      --muted: #5c6676;
+      --line: #cbd2dc;
+      --line-strong: #7d8999;
+      --blue: #2458d3;
+      --blue-hover: #1f4fbd;
+      --green: #176d53;
+      --green-hover: #125a44;
+      --shadow: 0 18px 45px rgba(21, 32, 51, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 15px;
+    }
+
+    .app {
+      min-height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    header,
+    footer {
+      padding: 14px 22px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--line);
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      border-bottom: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .app-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .credit {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .credit-mark {
+      width: 26px;
+      height: 26px;
+      border: 1px solid #c7d7ff;
+      border-radius: 50%;
+      background: #eef4ff;
+      color: var(--blue);
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .credit a {
+      color: var(--blue);
+      text-decoration: none;
+      overflow-wrap: anywhere;
+    }
+
+    .credit a:hover {
+      text-decoration: underline;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 19px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(280px, 390px) 1fr;
+      gap: 18px;
+      padding: 18px;
+      min-height: 0;
+    }
+
+    .controls {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      align-self: start;
+    }
+
+    .dropzone {
+      min-height: 190px;
+      border: 2px dashed var(--line-strong);
+      border-radius: 8px;
+      background: #f8fafc;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      text-align: center;
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+
+    .dropzone.is-over {
+      border-color: var(--blue);
+      background: #eef4ff;
+    }
+
+    .drop-title {
+      margin: 0 0 8px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .drop-subtitle {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    button,
+    .file-button {
+      appearance: none;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: var(--blue);
+      color: #ffffff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 0 13px;
+      font: inherit;
+      font-weight: 650;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    button:hover,
+    .file-button:hover {
+      background: var(--blue-hover);
+    }
+
+    button.secondary {
+      background: #ffffff;
+      border-color: var(--line-strong);
+      color: var(--ink);
+    }
+
+    button.secondary:hover {
+      background: #eef1f5;
+    }
+
+    button.success {
+      background: var(--green);
+    }
+
+    button.success:hover {
+      background: var(--green-hover);
+    }
+
+    button:disabled {
+      background: #d5dae2;
+      border-color: #d5dae2;
+      color: #6f7886;
+      cursor: not-allowed;
+    }
+
+    input[type="file"] {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .meta {
+      margin-top: 14px;
+      display: grid;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .preview {
+      min-width: 0;
+      min-height: 0;
+      background: #202733;
+      border-radius: 8px;
+      border: 1px solid #121924;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .preview-bar {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 14px;
+      background: #ffffff;
+      color: var(--ink);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .preview-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 650;
+    }
+
+    .canvas-wrap {
+      min-height: 320px;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      overflow: auto;
+      background:
+        linear-gradient(45deg, #2a3342 25%, transparent 25%),
+        linear-gradient(-45deg, #2a3342 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #2a3342 75%),
+        linear-gradient(-45deg, transparent 75%, #2a3342 75%);
+      background-color: #202733;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      background-size: 20px 20px;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: calc(100vh - 150px);
+      width: auto;
+      height: auto;
+      background: transparent;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    dialog {
+      border: 0;
+      border-radius: 8px;
+      padding: 0;
+      color: var(--ink);
+      box-shadow: 0 22px 70px rgba(11, 20, 35, 0.32);
+      max-width: min(420px, calc(100vw - 32px));
+    }
+
+    dialog::backdrop {
+      background: rgba(16, 24, 38, 0.38);
+    }
+
+    .dialog-content {
+      padding: 18px;
+      background: #ffffff;
+    }
+
+    .dialog-title {
+      margin: 0 0 7px;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .dialog-file {
+      margin: 0 0 16px;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+    }
+
+    .dialog-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .dialog-actions .cancel {
+      grid-column: 1 / -1;
+    }
+
+    @media (max-width: 780px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .preview {
+        min-height: 420px;
+      }
+
+      .canvas-wrap {
+        min-height: 340px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>AI Image Labeler</h1>
+    </header>
+
+    <main>
+      <section class="controls" aria-label="Image controls">
+        <div class="dropzone" id="dropzone">
+          <div>
+            <p class="drop-title">Drop PNG</p>
+            <p class="drop-subtitle">or choose a file</p>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <label class="file-button" for="fileInput">Choose PNG</label>
+          <input id="fileInput" type="file" accept="image/png">
+          <button id="generatedButton" type="button" disabled>AI Generated</button>
+          <button id="modifiedButton" class="success" type="button" disabled>AI Modified</button>
+        </div>
+
+        <div class="meta">
+          <div id="status">Ready.</div>
+          <div id="fileMeta">No image loaded.</div>
+        </div>
+      </section>
+
+      <section class="preview" aria-label="Preview">
+        <div class="preview-bar">
+          <div id="previewName" class="preview-name">Preview</div>
+          <button id="downloadAgainButton" class="secondary" type="button" disabled>Download Again</button>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="canvas" width="1200" height="800"></canvas>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span>Output is saved by the browser as a downloaded PNG.</span>
+      <span class="credit">
+        <span class="credit-mark" aria-hidden="true">S</span>
+        <span>
+          Made by
+          <a href="mailto:jesper.adolfsson@ib.scania.com">jesper.adolfsson@ib.scania.com</a>
+          at Scania Industrial Batteries AB
+        </span>
+      </span>
+    </footer>
+  </div>
+
+  <dialog id="choiceDialog">
+    <div class="dialog-content">
+      <p class="dialog-title">Choose label</p>
+      <p class="dialog-file" id="dialogFileName"></p>
+      <div class="dialog-actions">
+        <button id="dialogGeneratedButton" type="button">AI Generated</button>
+        <button id="dialogModifiedButton" class="success" type="button">AI Modified</button>
+        <button id="dialogCancelButton" class="secondary cancel" type="button">Cancel</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    const LABEL_DATA = {
+      ai_generated: {
+        suffix: "ai_generated",
+        alt: "AI Generated",
+        src: "data:image/png;base64,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"
+      },
+      ai_modified: {
+        suffix: "ai_modified",
+        alt: "AI Modified",
+        src: "data:image/png;base64,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"
+      }
+    };
+
+    const state = {
+      file: null,
+      sourceImage: null,
+      sourceBitmap: null,
+      labels: {},
+      lastKind: null,
+      lastOutputName: null
+    };
+
+    const dropzone = document.querySelector("#dropzone");
+    const fileInput = document.querySelector("#fileInput");
+    const generatedButton = document.querySelector("#generatedButton");
+    const modifiedButton = document.querySelector("#modifiedButton");
+    const downloadAgainButton = document.querySelector("#downloadAgainButton");
+    const canvas = document.querySelector("#canvas");
+    const ctx = canvas.getContext("2d");
+    const statusEl = document.querySelector("#status");
+    const fileMetaEl = document.querySelector("#fileMeta");
+    const previewNameEl = document.querySelector("#previewName");
+    const choiceDialog = document.querySelector("#choiceDialog");
+    const dialogFileName = document.querySelector("#dialogFileName");
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    function basenameWithoutPng(name) {
+      return name.replace(/\.png$/i, "");
+    }
+
+    function outputName(fileName, labelKind) {
+      return `${basenameWithoutPng(fileName)}_${LABEL_DATA[labelKind].suffix}.png`;
+    }
+
+    function isPngFile(file) {
+      return Boolean(file) && (file.type === "image/png" || /\.png$/i.test(file.name));
+    }
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error("Could not load image."));
+        image.src = src;
+      });
+    }
+
+    async function loadLabels() {
+      state.labels.ai_generated = await loadImage(LABEL_DATA.ai_generated.src);
+      state.labels.ai_modified = await loadImage(LABEL_DATA.ai_modified.src);
+    }
+
+    function setButtonsEnabled(enabled) {
+      generatedButton.disabled = !enabled;
+      modifiedButton.disabled = !enabled;
+      downloadAgainButton.disabled = !(enabled && state.lastKind);
+    }
+
+    function showSourcePreview() {
+      canvas.width = state.sourceImage.naturalWidth;
+      canvas.height = state.sourceImage.naturalHeight;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(state.sourceImage, 0, 0);
+      previewNameEl.textContent = state.file.name;
+    }
+
+    async function useFile(file) {
+      if (!isPngFile(file)) {
+        setStatus("Choose a PNG image.");
+        return;
+      }
+
+      state.file = file;
+      state.lastKind = null;
+      state.lastOutputName = null;
+      setButtonsEnabled(false);
+      setStatus("Loading image...");
+
+      const objectUrl = URL.createObjectURL(file);
+      try {
+        const image = await loadImage(objectUrl);
+        state.sourceImage = image;
+        fileMetaEl.textContent = `${file.name} - ${image.naturalWidth} x ${image.naturalHeight}px`;
+        showSourcePreview();
+        setButtonsEnabled(true);
+        askForLabel();
+      } catch (error) {
+        setStatus(error.message);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    }
+
+    function askForLabel() {
+      if (!state.file) {
+        return;
+      }
+
+      dialogFileName.textContent = state.file.name;
+      if (typeof choiceDialog.showModal === "function") {
+        choiceDialog.showModal();
+      } else {
+        setStatus("Choose a label.");
+      }
+    }
+
+    function applyLabel(labelKind) {
+      if (!state.sourceImage) {
+        setStatus("No image loaded.");
+        return;
+      }
+
+      const label = state.labels[labelKind];
+      const imageWidth = state.sourceImage.naturalWidth;
+      const imageHeight = state.sourceImage.naturalHeight;
+      const margin = Math.max(1, Math.round(imageHeight / 15));
+      const labelHeight = margin;
+      const labelWidth = Math.round(label.naturalWidth * (labelHeight / label.naturalHeight));
+      const x = imageWidth - margin - labelWidth;
+      const y = imageHeight - margin - labelHeight;
+
+      if (x < margin || y < 0) {
+        setStatus("Image is too small or too narrow for this label.");
+        return;
+      }
+
+      canvas.width = imageWidth;
+      canvas.height = imageHeight;
+      ctx.clearRect(0, 0, imageWidth, imageHeight);
+      ctx.drawImage(state.sourceImage, 0, 0);
+      ctx.drawImage(label, x, y, labelWidth, labelHeight);
+
+      state.lastKind = labelKind;
+      state.lastOutputName = outputName(state.file.name, labelKind);
+      downloadAgainButton.disabled = false;
+      previewNameEl.textContent = state.lastOutputName;
+      setStatus(`Created ${state.lastOutputName}`);
+      downloadCanvas(state.lastOutputName);
+    }
+
+    function downloadCanvas(filename) {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          setStatus("Could not create PNG download.");
+          return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }, "image/png");
+    }
+
+    function chooseDialogLabel(labelKind) {
+      choiceDialog.close();
+      applyLabel(labelKind);
+    }
+
+    function handleDroppedFiles(files) {
+      const png = Array.from(files).find(isPngFile);
+      if (!png) {
+        setStatus("Drop a PNG image.");
+        return;
+      }
+      useFile(png);
+    }
+
+    dropzone.addEventListener("dragenter", (event) => {
+      event.preventDefault();
+      dropzone.classList.add("is-over");
+    });
+
+    dropzone.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+      dropzone.classList.add("is-over");
+    });
+
+    dropzone.addEventListener("dragleave", () => {
+      dropzone.classList.remove("is-over");
+    });
+
+    dropzone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      dropzone.classList.remove("is-over");
+      handleDroppedFiles(event.dataTransfer.files);
+    });
+
+    document.body.addEventListener("dragover", (event) => {
+      event.preventDefault();
+    });
+
+    document.body.addEventListener("drop", (event) => {
+      event.preventDefault();
+      dropzone.classList.remove("is-over");
+      handleDroppedFiles(event.dataTransfer.files);
+    });
+
+    fileInput.addEventListener("change", () => {
+      useFile(fileInput.files[0]);
+      fileInput.value = "";
+    });
+
+    generatedButton.addEventListener("click", () => applyLabel("ai_generated"));
+    modifiedButton.addEventListener("click", () => applyLabel("ai_modified"));
+    downloadAgainButton.addEventListener("click", () => {
+      if (state.lastOutputName) {
+        downloadCanvas(state.lastOutputName);
+      }
+    });
+
+    document.querySelector("#dialogGeneratedButton").addEventListener("click", () => {
+      chooseDialogLabel("ai_generated");
+    });
+    document.querySelector("#dialogModifiedButton").addEventListener("click", () => {
+      chooseDialogLabel("ai_modified");
+    });
+    document.querySelector("#dialogCancelButton").addEventListener("click", () => {
+      choiceDialog.close();
+      setStatus("Ready.");
+    });
+
+    loadLabels()
+      .then(() => {
+        ctx.fillStyle = "#202733";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        setStatus("Ready.");
+      })
+      .catch((error) => {
+        setStatus(error.message);
+        setButtonsEnabled(false);
+      });
+  </script>
+</body>
+</html>
